@@ -71,13 +71,14 @@ No build step or dependencies to install — `@earendil-works/pi-coding-agent` a
 
 The same "run detached, wake the agent on output/exit" idea, across harnesses:
 
-- **opencode fork** — `monitor` + `bash_background` built natively into a fork of opencode:
-  [fl4p/opencode](https://github.com/fl4p/opencode) (branches
-  [`monitor-on-backgroundjob`](https://github.com/fl4p/opencode/tree/monitor-on-backgroundjob),
-  [`bash-background`](https://github.com/fl4p/opencode/tree/bash-background)).
-- **codex fork** — wake-on-background-output for OpenAI Codex:
-  [fl4p/codex](https://github.com/fl4p/codex) (branch
-  [`feat/wake-on-background-output`](https://github.com/fl4p/codex/tree/feat/wake-on-background-output)).
+- **opencode** — `monitor` + `bash_background` built natively into opencode. PR:
+  [anomalyco/opencode#33806](https://github.com/anomalyco/opencode/pull/33806) —
+  *feat(opencode): add Monitor tool (per-line background watcher)*. Fork:
+  [fl4p/opencode](https://github.com/fl4p/opencode).
+- **codex** — wake-on-background-output for OpenAI Codex. Proposal:
+  [openai/codex#22003](https://github.com/openai/codex/issues/22003) —
+  *Support injecting command output from background completion into the active Codex session*.
+  Fork: [fl4p/codex](https://github.com/fl4p/codex).
 - **agent-channel** — file-based named channels for talking between Claude Code / Codex /
   OpenCode agents across sessions (the "channel" skill):
   [fl4p/agent-channel](https://github.com/fl4p/agent-channel).
