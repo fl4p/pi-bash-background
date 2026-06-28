@@ -67,6 +67,21 @@ No build step or dependencies to install — `@earendil-works/pi-coding-agent` a
 - **Keep-alive in headless mode** (`pi -p` / RPC) is unverified; the interactive TUI keeps the
   process alive while a job runs.
 
+## Related projects
+
+The same "run detached, wake the agent on output/exit" idea, across harnesses:
+
+- **opencode fork** — `monitor` + `bash_background` built natively into a fork of opencode:
+  [fl4p/opencode](https://github.com/fl4p/opencode) (branches
+  [`monitor-on-backgroundjob`](https://github.com/fl4p/opencode/tree/monitor-on-backgroundjob),
+  [`bash-background`](https://github.com/fl4p/opencode/tree/bash-background)).
+- **codex fork** — wake-on-background-output for OpenAI Codex:
+  [fl4p/codex](https://github.com/fl4p/codex) (branch
+  [`feat/wake-on-background-output`](https://github.com/fl4p/codex/tree/feat/wake-on-background-output)).
+- **agent-channel** — file-based named channels for talking between Claude Code / Codex /
+  OpenCode agents across sessions (the "channel" skill):
+  [fl4p/agent-channel](https://github.com/fl4p/agent-channel).
+
 ## Prior art
 
 - [`ogulcancelik/pi-extensions` → `pi-tmux`](https://github.com/ogulcancelik/pi-extensions) —
@@ -76,4 +91,4 @@ No build step or dependencies to install — `@earendil-works/pi-coding-agent` a
 
 ## License
 
-MIT © Fabian
+MIT
