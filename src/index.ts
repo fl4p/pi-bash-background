@@ -51,6 +51,14 @@ interface Job {
 const MONITOR_FLUSH_MS = 1500;
 const MONITOR_MAX_PENDING_BYTES = 8_000;
 
+// Watch-shaped commands never exit, so bash_background's wake-on-exit never fires.
+// Weak instruction-followers ignore the prose guideline and run them here anyway;
+// this catches the common shapes and hard-refuses, naming `monitor` so the model
+// has to re-route. Deliberately conservative (only unambiguous follow/loop forms)
+// to avoid refusing a legitimate finite job.
+const WATCH_SHAPED =
+	/(^|[|;&]|\s)(tail\s+(-[a-zA-Z]*[fF]\b|--follow)|watch\b|journalctl\b[^|;&]*\s-f\b|while\s+(true\b|:)|until\s+false\b|for\s*\(\(\s*;\s*;\s*\)\))/;
+
 export default function (pi: ExtensionAPI) {
 	const jobs = new Map<string, Job>();
 	let seq = 0;
@@ -165,8 +173,9 @@ export default function (pi: ExtensionAPI) {
 		description:
 			"Run a shell command detached and return immediately. Combined stdout+stderr is captured " +
 			"to a logfile you can Read anytime. You are notified exactly once when the command exits " +
-			"(with its exit code). Use this for long jobs (builds, test runs, servers) where you want " +
-			"to keep working and be told when it finishes.",
+			"(with its exit code). Use this for FINITE long jobs (builds, test runs, servers) where you " +
+			"want to keep working and be told when it finishes. To watch a file/stream (tail -F, log " +
+			"tails, poll loops) use `monitor` — those never exit, so bash_background would never wake you.",
 		promptSnippet: "bash_background({command, description}): run a command detached; get notified once on exit.",
 		promptGuidelines: [
 			"Prefer plain `bash` for short commands — only use bash_background when the command is long-running.",
@@ -182,6 +191,17 @@ export default function (pi: ExtensionAPI) {
 		}),
 
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx: ExtensionContext) {
+			// Code-level routing guard: a watch never exits, so the wake-on-exit never
+			// fires. Refuse (don't even arm) and point at monitor — works even for
+			// models that ignore the prose guideline.
+			if (WATCH_SHAPED.test(params.command)) {
+				return errorResult(
+					"bg-rejected",
+					`Refused: "${params.command}" looks like a watch (it never exits), so bash_background ` +
+						`would never wake you. Use monitor({command}) instead — it's built for streaming output.`,
+				);
+			}
+
 			const id = newId();
 			const description = params.description?.trim() || params.command.slice(0, 60);
 			const logpath = logpathFor(id);
