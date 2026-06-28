@@ -1,0 +1,39 @@
+{
+  "name": "pi-bash-background",
+  "version": "0.1.0",
+  "description": "Run shell commands detached in the Pi coding agent and get woken on output or exit — bash_background + monitor tools.",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "check": "node --experimental-strip-types --check src/index.ts"
+  },
+  "keywords": [
+    "pi",
+    "pi-extension",
+    "pi-coding-agent",
+    "coding-agent",
+    "background",
+    "monitor",
+    "run-in-background"
+  ],
+  "author": "Fabian <fabian@schlieper.email>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fl4p/pi-bash-background.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fl4p/pi-bash-background/issues"
+  },
+  "homepage": "https://github.com/fl4p/pi-bash-background#readme",
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}
