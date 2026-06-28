@@ -1,7 +1,7 @@
 /**
  * pi-bash-background — run shell commands detached and get woken when they
  * produce output or finish. Brings Claude Code's `Bash(run_in_background)`
- * semantic (and a per-line `monitor`) to the Pi coding agent, which otherwise
+ * semantic (and a batched `monitor`) to the Pi coding agent, which otherwise
  * has no background-bash support (Pi's stance is "use tmux").
  *
  * Tools registered:
@@ -47,8 +47,9 @@ interface Job {
 }
 
 // monitor: how often to deliver accumulated new output, and how much to keep
-// per batch (so a chatty process can't flood a single turn).
-const MONITOR_FLUSH_MS = 1500;
+// per batch (so a chatty process can't flood a single turn). 200ms coalesces a
+// burst into one wake while still feeling near-real-time.
+const MONITOR_FLUSH_MS = 200;
 const MONITOR_MAX_PENDING_BYTES = 8_000;
 
 // Watch-shaped commands never exit, so bash_background's wake-on-exit never fires.
@@ -171,17 +172,15 @@ export default function (pi: ExtensionAPI) {
 		name: "bash_background",
 		label: "Bash (background)",
 		description:
-			"Run a shell command detached and return immediately. Combined stdout+stderr is captured " +
-			"to a logfile you can Read anytime. You are notified exactly once when the command exits " +
-			"(with its exit code). Use this for FINITE long jobs (builds, test runs, servers) where you " +
-			"want to keep working and be told when it finishes. To watch a file/stream (tail -F, log " +
-			"tails, poll loops) use `monitor` — those never exit, so bash_background would never wake you.",
+			"Run a shell command detached and return immediately; combined stdout+stderr go to a " +
+			"logfile you can Read anytime. Notified once when it exits, with the exit code. For FINITE " +
+			"long jobs (builds, tests, servers). To watch a file/stream (tail -F, log tails, poll loops) " +
+			"use `monitor` — those never exit, so bash_background would never wake you.",
 		promptSnippet: "bash_background({command, description}): run a command detached; get notified once on exit.",
 		promptGuidelines: [
-			"Prefer plain `bash` for short commands — only use bash_background when the command is long-running.",
-			"Do NOT sleep-and-poll a logfile to wait for completion; bash_background wakes you on exit automatically.",
-			"Use `monitor` instead when you need to react to output as it streams (an event per line), not just on exit.",
-			"Read the returned logpath to inspect progress or results at any time.",
+			"Finite jobs only (wakes once on exit). For file/stream watching use `monitor` (wakes on new output).",
+			"Don't sleep-and-poll the logfile to await completion — the exit wake is automatic; Read it anytime for progress.",
+			"Stop with background_stop({id}); list with background_list().",
 		],
 		parameters: Type.Object({
 			command: Type.String({ description: "The shell command to run in the background." }),
@@ -258,16 +257,15 @@ export default function (pi: ExtensionAPI) {
 		name: "monitor",
 		label: "Monitor",
 		description:
-			"Run a shell command detached and be woken as it produces NEW output (delivered in batches, " +
-			"not one turn per line). Combined stdout+stderr is also captured to a logfile. Use this to " +
-			"watch a streaming process — a dev server, a tail, a long log — where you want to react to " +
-			"output as it appears. For a one-shot 'tell me when it's done', use bash_background instead.",
+			"Run a shell command detached and get woken on NEW output (batched, not one turn per line); " +
+			"stdout+stderr also go to a logfile you can Read for the full stream. For watching a streaming " +
+			"source (dev server, tail -F, a growing log). For a one-shot 'tell me when it's done', use " +
+			"bash_background instead.",
 		promptSnippet: "monitor({command, description}): run a command detached; get woken on new output (batched).",
 		promptGuidelines: [
-			"Use monitor when you must react to streaming output; use bash_background when you only care about the exit.",
-			"Do NOT sleep-and-poll; monitor wakes you when there is new output and once more on exit.",
-			"Output is delivered in batches and capped per batch — Read the logpath for the complete stream.",
-			"Stop a monitor with background_stop({id}) when you no longer need it.",
+			"For streaming output (dev server, tail -F, logs). Use bash_background for finite jobs (wakes once on exit).",
+			"Delivered in batches and capped per batch — Read the logpath for the complete stream.",
+			"Stop with background_stop({id}); list with background_list().",
 		],
 		parameters: Type.Object({
 			command: Type.String({ description: "The shell command to run and monitor." }),
@@ -321,7 +319,10 @@ export default function (pi: ExtensionAPI) {
 			job.flushTimer = setInterval(() => flush(job), MONITOR_FLUSH_MS);
 
 			child.on("error", (err) => finish(job, `[monitor:${description}] (${id}) failed to run: ${String(err)}.`));
-			child.on("exit", (code, signal) => {
+			// `close` (not `exit`) fires after stdout/stderr are fully drained, so the
+			// trailing partial line and last buffered lines are captured before the
+			// final wake (exit can fire while pipe data is still pending).
+			child.on("close", (code, signal) => {
 				// Drain any trailing partial line, deliver the last batch, and the
 				// exit notice — all in the single final wake.
 				if (job.carry && job.carry.length > 0) {
